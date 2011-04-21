@@ -35,15 +35,21 @@
 
 Table \ref{tbl:counter} lists value of the counter after it was incremented
 \texttt{K / N} times on \texttt{N} different threads, for a total of
-\texttt{K} increments. The pseudocode of one thread is :
+\texttt{K} increments. The pseudocode executed by a thread is listed in
+figure \ref{fig:counter-pseudocode}.
 
-\begin{align*}
-    \texttt{for\ }   &\texttt{(long i = 0; i < K / N; i++) \{} \\
-    \texttt{\ \ \ \ }&\texttt{counter.inc()} \\
-    \texttt{\}\ \ \ }&\texttt{} \\
-\end{align*}
+\begin{figure}[h!]
+  \begin{verbatim}
+  for (long i = 0; i < K / N; i++) {
+    counter.inc();
+  }
+  \end{verbatim}
+  \caption{Counter pseudocode}
+  \label{fig:counter-pseudocode}
+\end{figure}
 
 \subsection{Simple}
+\label{ssec:simple}
 
 \emph{Simple} does not use any synchronization constructs. Java
 HotSpot assumes that variable is not shared accros multiple threads and
@@ -115,5 +121,95 @@ t2:  write local-counter to counter
 The final value of the counter will always be equal to \emph{K}. This
 implementation of the counter works as expected.
 
+
+\section{Search}
+
+\begin{table}[h!]
+  \centering
+  \small
+  \framebox{
+    \begin{tabular}{ r | c | c | c | c }
+    \# Threads & 1 & 2 & 3 & 4 \\
+    \hline
+    Simple & 50000001 & 75000001 & 83333333 & 87500001 \\
+    Volatile & 50000001 & 45654166 & 56228251 & 68703196 \\
+    \end{tabular}
+  }
+
+  \caption{Number of visited entries for variable N and K = 100.000.000 on a 4 logical
+  cores processor. Reported values are averaged over 7 runs.}
+  \label{tbl:search}
+\end{table}
+
+The table \ref{tbl:search} number of entries visited when searching a value
+located at \emph{K / N / 2} in a table with \emph{K} elements using \emph{N}
+threads. The value is always found by the first thread after searching half of
+the elements assigned to it. The pseudocode executed by a thread is
+listed in figure \ref{fig:search-pseudocode}. \texttt{found} is a shared
+boolean variable set to \texttt{true} when the target value was
+found by any of the threads.
+
+\begin{figure}[h!]
+  \begin{verbatim}
+  for (i = start; i < end && !found; i++) {                                    
+    if (table[i] == value) {                                                   
+      found = true;                                                            
+      break;                                                                   
+    }                                                                          
+  }                                                                            
+                                                                               
+  synchronized (Search.class) {                                                
+    visited += visited_elements_in_current_thread;
+  }
+  \end{verbatim}
+  \caption{Search pseudocode}
+  \label{fig:search-pseudocode}
+\end{figure}
+
+
+\subsection{Simple}
+
+\emph{Simple} doesn't use any synchronization mechanism. Similar to
+subsection \ref{ssec:simple} Java HotSpot optimizes away the
+read of \texttt{found} because it implicitly assumes that \texttt{found}
+is accessed by only a thread and the flag changes at the end of
+the loop. The memory access pattern of \texttt{found} is:
+
+\begin{verbatim}
+read found into local_found
+if not local_found
+  for each element in table slice
+    if element == value
+      write true in found 
+      stop
+\end{verbatim}
+
+Assuming that all threads start simultaneously and perfect scheduling, the
+number of accessed elements will always be \emph{K - (K / N / 2) + 1}. If
+the number of threads is large then the first thread might find \emph{value}
+before last threads even start and therefore those threads don't need to
+search at all.
+
+\subsection{Volatile}
+
+If the shared flag \texttt{found} is made volatile Java HotSpot cannot
+optimize away the read. The memory access pattern of \texttt{found} is:
+
+\begin{verbatim}
+for each element in table slice
+  read found into local_found
+  if local_found
+    stop
+  if element == value
+    write true in found 
+    stop
+\end{verbatim}
+
+When the value is found all threads stop next time they are scheduled
+to run. In theory, assuming perfect scheduling and one thread per physical core,
+the number of elements accessed is \texttt{K / 2}. In practice, this number
+depends on the scheduling of the threads. For example, for two threads on
+two processors, the total number of visited elements is usually lower than
+\texttt{K / 2} because the first thread has a head start over the second.
 
 \end{document}
