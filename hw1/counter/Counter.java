@@ -1,6 +1,6 @@
 public class Counter implements Runnable {
-  private CounterInterface counter;
-  private long K;
+  private CounterInterface counter;  // the shared counter
+  private long K;                    // how much to increment
 
   public Counter(CounterInterface counter, long K) {
     this.counter = counter;
@@ -18,26 +18,32 @@ public class Counter implements Runnable {
     int N = 2;
     long K = 2000000000;
 
-    if (args.length >= 1) {
-      N = Integer.parseInt(args[0]);
-    } else if (args.length >= 2) {
-      K = Long.parseLong(args[1]);
-    } else if (args.length >= 3) {
-      System.err.println("Usage: java Counter [N K]");
+    // Parses arguments
+    if (args.length >= 3) {
+      System.err.println("Usage: java Counter [N [K]]");
       System.exit(1);
     }
+    if (args.length >= 2) {
+      K = Long.parseLong(args[1]);
+    }
+    if (args.length >= 1) {
+      N = Integer.parseInt(args[0]);
+    }
 
+    System.err.println("Running with N = " + N + " and K = " + K);
     run(N, K, new CounterSimple());
     run(N, K, new CounterVolatile());
     run(N, K, new CounterSynchronized());
   }
 
+  // Spawns N threads to increment counter K times
   private static void run(int N, long K, CounterInterface counter)
   {
     Thread[] threads = new Thread[N];
 
     for (int i = 0; i < N; i++) {
-      threads[i] = new Thread(new Counter(counter, K / N));
+      long steps = K / N + (i < K % N ? 1 : 0);
+      threads[i] = new Thread(new Counter(counter, steps));
       threads[i].start();
     }
 
