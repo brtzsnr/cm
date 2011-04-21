@@ -1,0 +1,119 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+
+\title{Concurency and Multithreading\\
+       Java concurrency Constructs}
+\author{Alexandru Mosoi $<$ami650@few.vu.nl$>$\\
+        student number 2000903}
+
+\begin{document}
+\maketitle
+
+
+\section{Counter}
+
+\begin{table}[h!]
+  \centering
+  \small
+  \framebox{
+    \begin{tabular}{ r | c | c | c | c | c }
+    \# Threads & 1 & 2 & 3 & 4 & 8 \\
+    \hline
+    Simple & 2000000000 & 1000046618 & 670269482 & 500093260 & 252398649 \\
+    Volatile & 2000000000 & 1370615635 & 1375495038 & 1414755523 & 1259676634 \\
+    Synchronized & 2000000000 & 2000000000 & 2000000000 & 2000000000 & 2000000000 \\
+    \end{tabular}
+  }
+
+  \caption{Counter value for variable N and K = 2.000.000.000 on a 4 logical
+  cores processor}
+  \label{tbl:counter}
+\end{table}
+
+
+Table \ref{tbl:counter} lists value of the counter after it was incremented
+\texttt{K / N} times on \texttt{N} different threads, for a total of
+\texttt{K} increments. The pseudocode of one thread is :
+
+\begin{align*}
+    \texttt{for\ }   &\texttt{(long i = 0; i < K / N; i++) \{} \\
+    \texttt{\ \ \ \ }&\texttt{counter.inc()} \\
+    \texttt{\}\ \ \ }&\texttt{} \\
+\end{align*}
+
+\subsection{Simple}
+
+\emph{Simple} does not use any synchronization constructs. Java
+HotSpot assumes that variable is not shared accros multiple threads and
+detects an optimization oportunity. The memory access into the following
+pattern:
+
+\begin{verbatim}
+read counter into local-counter
+increment local-counter K/N times
+write local-counter to counter
+\end{verbatim}
+
+The last thread to execute \texttt{write local-counter} sets the final
+value for shared counter. Since there are \texttt{N} threads and each thread
+increments the counter \texttt{K/N} times the final value of the counter
+will be at least \texttt{K/N}. The slight difference in the reported value
+and the theoretical one is because of lazy runtime optimization of Java HotSpot.
+Before the loop is optimized the value might have been incremented separately
+by all threads.
+
+\subsection{Volatile}
+\emph{Volatile} declares the internal counter as \texttt{volatile}.
+This will disable optimizations and the memory access pattern changes to
+
+\begin{verbatim}
+repeat
+  read counter into local-counter
+  increment local-counter 1 time
+  write local-counter to counter
+\end{verbatim}
+
+However when considering multiple threads, for example \texttt{t1} and
+\texttt{t2}, the following \emph{race}\footnote{Both threads read the
+same value, increment it and then write it back} is possible because
+the incrementation is not atomic:
+
+\begin{verbatim}
+t1:read counter into local-counter
+
+t2:read counter into local-counter
+t2:increment local-counter 1 time
+t2:write local-counter to counter
+
+t1:increment local-counter 1 time
+t1:write local-counter to counter
+\end{verbatim}
+
+Depending on the scheduling of the threads the final value of the counter can
+take any value from 1 to \texttt{K}.
+
+\subsection{Synchronized}
+
+\emph{Synchronized} protects the access to internal counter with
+the counter's monitor so no two threads will execute the critical
+section simultaneously. The memory access pattern will be:
+
+\begin{verbatim}
+t1:in critical section
+t1:  read counter into local-counter
+t1:  increment local-counter 1 time
+t1:  write local-counter to counter
+
+t2:in critical section
+t2:  read counter into local-counter
+t2:  increment local-counter 1 time
+t2:  write local-counter to counter
+\end{verbatim}
+
+The final value of the counter will always be equal to \emph{K}. This
+implementation of the counter works as expected.
+
+
+\end{document}
