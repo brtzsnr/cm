@@ -2,6 +2,8 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
+\usepackage{fancyvrb}
+\usepackage{fullpage}
 
 \title{Concurency and Multithreading\\
        Java concurrency Constructs}
@@ -39,11 +41,11 @@ Table \ref{tbl:counter} lists value of the counter after it was incremented
 figure \ref{fig:counter-pseudocode}.
 
 \begin{figure}[h!]
-  \begin{verbatim}
-  for (long i = 0; i < K / N; i++) {
-    counter.inc();
-  }
-  \end{verbatim}
+  \begin{Verbatim}[frame=single]
+for (long i = 0; i < K / N; i++) {
+  counter.inc();
+}
+  \end{Verbatim}
   \caption{Counter pseudocode}
   \label{fig:counter-pseudocode}
 \end{figure}
@@ -122,6 +124,7 @@ The final value of the counter will always be equal to \emph{K}. This
 implementation of the counter works as expected.
 
 
+\newpage
 \section{Search}
 
 \begin{table}[h!]
@@ -150,18 +153,18 @@ boolean variable set to \texttt{true} when the target value was
 found by any of the threads.
 
 \begin{figure}[h!]
-  \begin{verbatim}
-  for (i = start; i < end && !found; i++) {                                    
-    if (table[i] == value) {                                                   
-      found = true;                                                            
-      break;                                                                   
-    }                                                                          
-  }                                                                            
-                                                                               
-  synchronized (Search.class) {                                                
-    visited += visited_elements_in_current_thread;
-  }
-  \end{verbatim}
+  \begin{Verbatim}[frame=single]
+for (i = start; i < end && !found; i++) {                                    
+  if (table[i] == value) {                                                   
+    found = true;                                                            
+    break;                                                                   
+  }                                                                          
+}                                                                            
+                                                                             
+synchronized (Search.class) {                                                
+  visited += visited_elements_in_current_thread;
+}
+  \end{Verbatim}
   \caption{Search pseudocode}
   \label{fig:search-pseudocode}
 \end{figure}
@@ -211,5 +214,74 @@ the number of elements accessed is \texttt{K / 2}. In practice, this number
 depends on the scheduling of the threads. For example, for two threads on
 two processors, the total number of visited elements is usually lower than
 \texttt{K / 2} because the first thread has a head start over the second.
+
+
+\newpage
+\section{Samaritan}
+
+\begin{figure}[h!]
+  \small
+  \begin{minipage}{0.5\linewidth}
+    \begin{Verbatim}[frame=single]
+Samaritan
+---------
+repeat
+  synchronize (samaritan)
+    picks 2 resources at random
+    makes the resources available
+    notifies everybody on samaritan
+    waits on samaritan
+
+    \end{Verbatim}
+  \end{minipage}
+  \begin{minipage}{0.5\linewidth}
+    \begin{Verbatim}[frame=single]
+Player
+---------
+repeat
+  synchronize (samaritan)
+    waits on samaritan
+    if all resources available
+      consumes resources
+      builds something (10ms)
+      notifies everybody on samaritan
+    \end{Verbatim}
+  \end{minipage}
+  \caption{Pseudocode for Samaritan and Players}
+  \label{fig:samaritan-pseudocode}
+\end{figure}
+
+The pseudocode for \emph{Samaritan} and \emph{Player} is listed in figure
+\ref{fig:samaritan-pseudocode}. There is only one \emph{Samaritan} used
+as a monitor by everybody and three Players.
+
+First thing to note is that only one of the four participants can be
+active at any given time because of the critical sections
+guarded by \texttt{samaritan}.
+
+The first participant to act is the Samaritan,
+the others wait for his notification. The Samaritan picks two different 
+resources and makes them available guaranteeing that exactly one Player
+will be able to build. Then Samaritan notifies everybody that
+resources are available and waits for them to be consumed.
+
+Next, Players wake up one by one in an arbitrary order. If Player wakes and
+he does not have all resources he will go back to into waiting state.  If,
+however, waked Player has the resources it consumes them. Consequently no other
+Player can act until the Samaritan spawns new resources. After the current
+Player finishes its actions he notifies everybody including the Samaritan.
+If another Player wakes before the Samaritan he will do nothing because
+he does not have resources.
+
+Eventually the Samaritan is waked and the process repeats. It
+is possible that now some Players are notified, while others are
+not. However, it is irrelevant because Samaritan will notify
+all Players after it generates resources.
+
+The algorithm does not deadlock because after a Player consumes the resources
+generated by the Samaritan he will wake the Samaritan again starting the
+process allover.  At most one set of resources will be available at any
+given time because the Samaritan generates resources for exactly one Player
+and he is waken again only after these resources have been consumed.
 
 \end{document}
