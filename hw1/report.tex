@@ -1,9 +1,13 @@
 \documentclass[12pt]{article}
 
 \usepackage[utf8]{inputenc}
+\usepackage{subfig}
+\usepackage{graphicx}
+\usepackage{epstopdf}
 \usepackage{amsmath}
 \usepackage{fancyvrb}
 \usepackage{fullpage}
+\usepackage{paralist}
 
 \title{Concurency and Multithreading\\
        Java concurrency Constructs}
@@ -37,7 +41,7 @@
 
 Table \ref{tbl:counter} lists value of the counter after it was incremented
 \texttt{K / N} times on \texttt{N} different threads, for a total of
-\texttt{K} increments. The pseudocode executed by a thread is listed in
+\texttt{K} increments. The pseudo code executed by a thread is listed in
 figure \ref{fig:counter-pseudocode}.
 
 \begin{figure}[h!]
@@ -54,8 +58,8 @@ for (long i = 0; i < K / N; i++) {
 \label{ssec:simple}
 
 \emph{Simple} does not use any synchronization constructs. Java
-HotSpot assumes that variable is not shared accros multiple threads and
-detects an optimization oportunity. The memory access into the following
+HotSpot assumes that variable is not shared across multiple threads and
+detects an optimization opportunity. The memory access into the following
 pattern:
 
 \begin{verbatim}
@@ -65,11 +69,11 @@ write local-counter to counter
 \end{verbatim}
 
 The last thread to execute \texttt{write local-counter} sets the final
-value for shared counter. Since there are \texttt{N} threads and each thread
-increments the counter \texttt{K/N} times the final value of the counter
-will be at least \texttt{K/N}. The slight difference in the reported value
+value for shared counter. Since there are $N$ threads and each thread
+increments the counter $K/N$ times the final value of the counter
+will be at least $K/N$. The slight difference in the reported value
 and the theoretical one is because of lazy runtime optimization of Java HotSpot.
-Before the loop is optimized the value might have been incremented separately
+Before the loop is optimized, the value might have been incremented separately
 by all threads.
 
 \subsection{Volatile}
@@ -144,12 +148,12 @@ implementation of the counter works as expected.
   \label{tbl:search}
 \end{table}
 
-The table \ref{tbl:search} number of entries visited when searching a value
-located at \emph{K / N / 2} in a table with \emph{K} elements using \emph{N}
-threads. The value is always found by the first thread after searching half of
-the elements assigned to it. The pseudocode executed by a thread is
-listed in figure \ref{fig:search-pseudocode}. \texttt{found} is a shared
-boolean variable set to \texttt{true} when the target value was
+Table \ref{tbl:search} gives the average number of entries visited before the
+value located at index $K / N / 2$ is found in a vector with $K$ elements
+using $N$ threads. The value is always found by the first thread after
+searching half of the elements assigned to it. The pseudo code executed by
+a thread is listed in figure \ref{fig:search-pseudocode}. \texttt{found}
+is a shared boolean variable set to \texttt{true} when the target value was
 found by any of the threads.
 
 \begin{figure}[h!]
@@ -165,18 +169,18 @@ synchronized (Search.class) {
   visited += visited_elements_in_current_thread;
 }
   \end{Verbatim}
-  \caption{Search pseudocode}
+  \caption{Search pseudo code}
   \label{fig:search-pseudocode}
 \end{figure}
 
 
 \subsection{Simple}
 
-\emph{Simple} doesn't use any synchronization mechanism. Similar to
-subsection \ref{ssec:simple} Java HotSpot optimizes away the
-read of \texttt{found} because it implicitly assumes that \texttt{found}
-is accessed by only a thread and the flag changes at the end of
-the loop. The memory access pattern of \texttt{found} is:
+\emph{Simple} doesn't use any synchronization mechanism. Similar to subsection
+\ref{ssec:simple} Java HotSpot optimizes away reading of \texttt{found}
+because it implicitly assumes that \texttt{found} flag is accessed by only
+a thread and it changes only at the end of the loop. The memory access pattern
+of \texttt{found} is:
 
 \begin{verbatim}
 read found into local_found
@@ -188,15 +192,16 @@ if not local_found
 \end{verbatim}
 
 Assuming that all threads start simultaneously and perfect scheduling, the
-number of accessed elements will always be \emph{K - (K / N / 2) + 1}. If
-the number of threads is large then the first thread might find \emph{value}
+number of accessed elements will always be $K - (K / N / 2) + 1$. If
+the number of threads is large, then the first thread might find \emph{value}
 before last threads even start and therefore those threads don't need to
 search at all.
 
 \subsection{Volatile}
 
-If the shared flag \texttt{found} is made volatile Java HotSpot cannot
-optimize away the read. The memory access pattern of \texttt{found} is:
+If the shared flag \texttt{found} is made volatile, then Java HotSpot
+cannot optimize away the reading operation. The memory access pattern of
+\texttt{found} is:
 
 \begin{verbatim}
 for each element in table slice
@@ -208,13 +213,106 @@ for each element in table slice
     stop
 \end{verbatim}
 
-When the value is found all threads stop next time they are scheduled
-to run. In theory, assuming perfect scheduling and one thread per physical core,
-the number of elements accessed is \texttt{K / 2}. In practice, this number
-depends on the scheduling of the threads. For example, for two threads on
-two processors, the total number of visited elements is usually lower than
-\texttt{K / 2} because the first thread has a head start over the second.
+When the value is found all threads stop next time they are scheduled to
+run. In theory, assuming perfect scheduling and one thread per physical core,
+the number of elements accessed is $K / 2$. In practice, this number depends on the
+scheduling of the threads. For example, for two threads on two processors,
+the total number of visited elements is usually lower than $K / 2$ because
+the first thread has a head start over the second.
 
+
+\newpage
+\section{Builders}
+
+This problem is an instance of the classic problem \emph{Dining philosophers}.
+There are $K$ builders (numbered from 0 to $K - 1$). Each builder $i$
+is assigned two resources $i$ and $(i + 1) \% K$ which she must hold to
+build. No resource can be used simultaneously by two builders.
+
+The simplest solution is to have each builder $i$ resource $i$, then resource
+$(i + 1) \% K$, then build, and finally releasing the resources. However,
+this solution can easily deadlock when every builder acquires first resource
+assigned before anybody acquires its second resource. In this case all
+resources are acquired and all builders wait for a resource to be released.
+
+The deadlock happens because there is a cycle in the dependency graph of
+resources.  A resource, $A$ depends on another resource $B$ if it can be $A$
+can be acquired while $B$ is already acquired by the same thread. In our
+case resource 0 depends on resource 1, which depends on resource 2, and so
+on until the last resource. Moreover, resource $K - 1$ depends on resource
+0 completing the cycle. To avoid a deadlock the cycle must be broken. This
+is accomplished by ordering the resources and requesting them in that order.
+
+Another problem besides deadlocking is starvation which happens when some
+of the builders don't get to build anything in a long run.
+
+We experimented with two methods for deadlock avoidance (i.e. cycle breaking).
+\begin{inparaenum}[\itshape a)\upshape]
+\item \emph{first} builder acquires resources in reversed order
+\item \emph{odd}-numbered builders acquire resources in reversed order.
+\end{inparaenum}
+The resource dependency graph is depicted in figure \ref{fig:builders}.
+
+Next to reduce starvation, we called Java function \texttt{Thread.yield()}
+-- which deliberately gives control to other threads -- when resources
+are released. The starvation was measured using the index of dispersion,
+$\sigma^2 / \mu$ (variance over average). A small constant index of
+dispersion means almost no starvation at all. A large growing
+index of dispersion means that only a few builders are doing some work.
+
+The results are presented in table \ref{tbl:builders}.  We run each experiment
+five times over 100 s. Total time should be $K \cdot 100 s$. Ideal pause to
+total time ratio is 0. Ideal wait ratio is $\lceil K / 2 \rceil / K$. Ideal
+work ratio $\lfloor K / 2 \rfloor / K$. Ideal index of dispersion is 0.
+
+If only the first builder reverses the order of resource acquisition, then
+often, at most one builder can build at a time, the others are blocked waiting
+to acquire the second resource resulting in a very small work time to
+total time ratio, slightly larger than $1/K$. This strategy also gives a big advantage to
+the last builder leading to starvation of other builders.
+
+For the case when odd-numbered builders reverse the order of resource
+acquisition a builder will wait:
+\begin{inparaenum}[\itshape a)\upshape]
+\item on the \emph{first} resource -- the second resources is free, or
+\item on the \emph{second} resource -- the neighbour sharing the
+resource is already doing some work.
+\end{inparaenum} In practice this strategy reduces the starvation as can
+be seen in the results table. In theory, starvation is still possible.
+
+In the case of voluntarily execution ceding (i.e. \texttt{Thread.yield()})
+a small reduction in index of dispersion is observed for the \emph{odd}
+case.
+
+\begin{figure}
+  \centering
+  \subfloat[First reversed]{
+    \includegraphics[width=0.3\textwidth]{first.pdf}
+  }
+  \subfloat[Odd reversed]{
+    \includegraphics[width=0.3\textwidth]{odd.pdf}
+  }
+  \caption{Resource dependency graph when first/odd reverse resources
+  acquisition order}
+  \label{fig:builders}.
+\end{figure}
+
+
+\begin{table}[h!]
+  \small
+  \framebox{
+    \begin{tabular}{ c | c | c c c c | c}
+      cooperative & reversed & total time (s) & pause \% & wait \% & work \% & index of dispersion \\
+      \hline
+      yield & first & 2033.225 & 0.010 & 93.880 & 6.111 & 5282.495 (and growing) \\
+      no yield & first & 2017.563 & 0.008 & 93.707 & 6.286 & 5151.709 (and growing) \\
+      yield & odd & 2008.691 & 0.046 & 62.209 & 37.745 & 24.072 \\
+      no yield & odd & 2001.546 & 0.032 & 63.907 & 36.061 & 26.071 \\
+    \end{tabular}
+  }
+  \caption{Pause, waiting, working times for 20 builders.}
+  \label{tbl:builders}
+\end{table}
 
 \newpage
 \section{Samaritan}
@@ -256,32 +354,33 @@ The pseudocode for \emph{Samaritan} and \emph{Player} is listed in figure
 as a monitor by everybody and three Players.
 
 First thing to note is that only one of the four participants can be
-active at any given time because of the critical sections
-guarded by \texttt{samaritan}.
-
-The first participant to act is the Samaritan,
-the others wait for his notification. The Samaritan picks two different 
-resources and makes them available guaranteeing that exactly one Player
-will be able to build. Then Samaritan notifies everybody that
-resources are available and waits for them to be consumed.
+active at any given time because of the critical sections guarded by
+\texttt{samaritan}. The first participant to act is the Samaritan, the others
+wait for his notification. The Samaritan picks two different resources and
+makes them available guaranteeing that exactly one Player will be able to
+build. Then Samaritan notifies everybody that resources are available and
+waits for them to be consumed.
 
 Next, Players wake up one by one in an arbitrary order. If Player wakes and
 he does not have all resources he will go back to into waiting state.  If,
 however, waked Player has the resources it consumes them. Consequently no other
 Player can act until the Samaritan spawns new resources. After the current
 Player finishes its actions he notifies everybody including the Samaritan.
-If another Player wakes before the Samaritan he will do nothing because
-he does not have resources.
+If another Player wakes before the Samaritan he will do nothing because he
+does not have resources.
 
-Eventually the Samaritan is waked and the process repeats. It
-is possible that now some Players are notified, while others are
-not. However, it is irrelevant because Samaritan will notify
-all Players after it generates resources.
+Eventually the Samaritan is woken up and the process repeats. It is possible
+that now some Players are notified, while others are not. However, it is
+irrelevant because Samaritan will notify all Players after it generates
+resources.
 
 The algorithm does not deadlock because after a Player consumes the resources
-generated by the Samaritan he will wake the Samaritan again starting the
-process allover.  At most one set of resources will be available at any
+generated by the Samaritan he will wake the Samaritan restarting the
+process. At most one set of resources will be available at any
 given time because the Samaritan generates resources for exactly one Player
-and he is waken again only after these resources have been consumed.
+and he is waken again \emph{only} after these resources have been consumed.
+
+No player will starve because every round the Player that will have all the
+resources is picked uniformly at random.
 
 \end{document}
