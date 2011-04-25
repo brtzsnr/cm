@@ -5,6 +5,7 @@ public class Builder implements Runnable {
   private static final int S_WAIT = 1;
   private static final int S_WORK = 2;
   private static final int S_NUMSTATES = 3;
+  private static final int MAX_RUN_TIMEMILLIS = 100000;
 
   private static Random random = new Random();
   private static long startTime = System.currentTimeMillis();
@@ -84,7 +85,7 @@ public class Builder implements Runnable {
   private void updateTime() {
     long curr = System.currentTimeMillis();
 
-    synchronized (Builders.class) {
+    synchronized (Builder.class) {
       times[state] += curr - timer;
       timer = curr;
     }
@@ -92,7 +93,7 @@ public class Builder implements Runnable {
 
   // Prints some nice stats from time to time.
   private void updateStats() {
-    synchronized (Builders.class) {
+    synchronized (Builder.class) {
       numBuildings++;
 
       if (numBuildings % (10 * K) == 0) {
@@ -132,7 +133,7 @@ public class Builder implements Runnable {
         System.err.println();
         System.err.println();
 
-        if (System.currentTimeMillis() - startTime > 100000) {
+        if (System.currentTimeMillis() - startTime >= MAX_RUN_TIMEMILLIS) {
           System.err.println("Finished");
           System.exit(0);
         }
@@ -140,10 +141,7 @@ public class Builder implements Runnable {
     }
   }
 
-
-
-  public static void main(String[] args)
-  {
+  public static void main(String[] args) {
     if (args.length >= 2) {
       System.err.println("Usage: java Builder [K]");
       System.exit(1);

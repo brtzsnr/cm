@@ -5,9 +5,9 @@ public class Search implements Runnable {
   private static boolean found = false;
   // private static volatile boolean found = false;
 
-  private int[] table;
-  private int start, end;
-  private int value;
+  private int[] table;         // Table of values
+  private int start, end;      // start and end search indexes
+  private int value;           // value to search
 
   public Search(int[] table, int start, int end, int value) {
     this.table = table;
