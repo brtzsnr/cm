@@ -11,8 +11,8 @@ import data_structures.implementation.LockFreeTree;
 
 public class Main {
 
-	private static final int NR_OPERATIONS = 12;
-	private static final boolean ALLOW_DOUBLE_ELEMENTS = false;
+	private static final int NR_OPERATIONS = 20;
+	private static final boolean ALLOW_DOUBLE_ELEMENTS = true;
 
 	private static final String CL = "cl";
 	private static final String CT = "ct";
@@ -22,7 +22,7 @@ public class Main {
 	private static final String LFT = "lft";
 
 	private static void permute(int[] array) {
-		Random random = new Random();
+		Random random = new Random(12);
 
 		for (int i = 0; i < array.length; i++) {
 			int r = random.nextInt(array.length);
@@ -46,12 +46,14 @@ public class Main {
 	private static void createWorkDataWithDoubles(int[] itemsToAdd,
 			int[] itemsToRemove) {
 		Random random = new Random(0);
+
 		for (int i = 0; i < NR_OPERATIONS; i++) {
-			int nextRandom = random.nextInt();
+			int nextRandom = random.nextInt(NR_OPERATIONS);
 			itemsToAdd[i] = nextRandom;
 			itemsToRemove[i] = nextRandom;
 		}
 
+		permute(itemsToAdd);
 		permute(itemsToRemove);
 	}
 

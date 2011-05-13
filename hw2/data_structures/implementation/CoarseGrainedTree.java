@@ -60,7 +60,7 @@ public class CoarseGrainedTree<T extends Comparable<T>> implements Sorted<T> {
                                 if (r < 0) {
                                         last = curr;
                                         curr = curr.left;
-                                } if (r > 0) {
+                                } else if (r > 0) {
                                         last = curr;
                                         curr = curr.right;
                                 } else {
@@ -74,8 +74,9 @@ public class CoarseGrainedTree<T extends Comparable<T>> implements Sorted<T> {
                         }
 
                         // Merges curr's children.
+                        assert t.compareTo(curr.data) == 0;
                         if (curr.left != null && curr.right != null) {
-                                Node ptr = curr;
+                                Node ptr = curr.left;
                                 while (ptr.right != null) {
                                         ptr = ptr.right;
                                 }
@@ -106,20 +107,26 @@ public class CoarseGrainedTree<T extends Comparable<T>> implements Sorted<T> {
                 }
         }
 
-        private void toString(Node node, StringBuffer buffer) {
+        private void toString(Node node, StringBuffer buffer, int level) {
                 if (node != null) {
-                        toString(node.left, buffer);
+                        for (int i = 0; i < level; i++) {
+                                buffer.append("  ");
+                        }
                         buffer.append(node.data);
-                        buffer.append(", ");
-                        toString(node.right, buffer);
+                        buffer.append("\n");
+                        toString(node.left, buffer, level + 1);
+                        toString(node.right, buffer, level + 1);
                 }
         }
 
         public synchronized String toString() {
+                if (root == null) {
+                        return "";
+                }
+
                 StringBuffer buffer = new StringBuffer();
-                buffer.append("{ ");
-                toString(root, buffer);
-                buffer.append("}");
+                buffer.append("\n");
+                toString(root, buffer, 0);
                 return buffer.toString();
         }
 }
