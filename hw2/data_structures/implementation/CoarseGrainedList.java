@@ -1,5 +1,7 @@
 package data_structures.implementation;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import data_structures.Sorted;
 
 public class CoarseGrainedList<T extends Comparable<T>> implements Sorted<T> {
@@ -15,8 +17,10 @@ public class CoarseGrainedList<T extends Comparable<T>> implements Sorted<T> {
 
         // head marks the start of the list, but it is not in the list.
         private Node head = new Node(null, null);
+        private Lock lock = new ReentrantLock();
 
-        public synchronized void add(T t) {
+        public void add(T t) {
+                lock.lock();
                 Node curr = head;
                 while (curr.next != null) {
                         if (t.compareTo(curr.next.data) <= 0) {
@@ -25,9 +29,11 @@ public class CoarseGrainedList<T extends Comparable<T>> implements Sorted<T> {
                         curr = curr.next;
                 }
                 curr.next = new Node(curr.next, t);
+                lock.unlock();
         }
 
-        public synchronized void remove(T t) {
+        public void remove(T t) {
+                lock.lock();
                 Node curr = head;
                 while (curr.next != null) {
                         if (t.compareTo(curr.next.data) == 0) {
@@ -36,6 +42,7 @@ public class CoarseGrainedList<T extends Comparable<T>> implements Sorted<T> {
                         }
                         curr = curr.next;
                 }
+                lock.unlock();
         }
 
         public String toString() {

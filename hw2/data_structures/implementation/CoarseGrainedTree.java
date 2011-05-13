@@ -1,5 +1,7 @@
 package data_structures.implementation;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import data_structures.Sorted;
 
 public class CoarseGrainedTree<T extends Comparable<T>> implements Sorted<T> {
@@ -14,82 +16,93 @@ public class CoarseGrainedTree<T extends Comparable<T>> implements Sorted<T> {
         }
 
         private Node root = null;
+        private Lock lock = new ReentrantLock();
 
-        public synchronized void add(T t) {
-                if (root == null) {
-                        root = new Node(t);
-                        return;
-                }
+        public void add(T t) {
+                try {
+                        lock.lock();
+                        if (root == null) {
+                                root = new Node(t);
+                                return;
+                        }
 
-                // Puts t into a leaf.
-                Node curr = root;
-                while (true) {
-                        if (t.compareTo(curr.data) <= 0) {
-                                if (curr.left == null) {
-                                        curr.left = new Node(t);
-                                        return;
+                        // Puts t into a leaf.
+                        Node curr = root;
+                        while (true) {
+                                if (t.compareTo(curr.data) <= 0) {
+                                        if (curr.left == null) {
+                                                curr.left = new Node(t);
+                                                return;
+                                        } else {
+                                                curr = curr.left;
+                                        }
                                 } else {
-                                        curr = curr.left;
-                                }
-                        } else {
-                                if (curr.right == null) {
-                                        curr.right = new Node(t);
-                                        return;
-                                } else {
-                                        curr = curr.right;
+                                        if (curr.right == null) {
+                                                curr.right = new Node(t);
+                                                return;
+                                        } else {
+                                                curr = curr.right;
+                                        }
                                 }
                         }
+                } finally {
+                        lock.unlock();
                 }
         }
 
         public synchronized void remove(T t) {
-                // Finds the node containing t.
-                Node last = null, curr = root;
-                while (curr != null) {
-                        int r = t.compareTo(curr.data);
-                        if (r < 0) {
-                                last = curr;
-                                curr = curr.left;
-                        } if (r > 0) {
-                                last = curr;
-                                curr = curr.right;
-                        } else {
-                                break;
+                try {
+                        lock.lock();
+                        // Finds the node containing t.
+                        Node last = null, curr = root;
+                        while (curr != null) {
+                                int r = t.compareTo(curr.data);
+                                if (r < 0) {
+                                        last = curr;
+                                        curr = curr.left;
+                                } if (r > 0) {
+                                        last = curr;
+                                        curr = curr.right;
+                                } else {
+                                        break;
+                                }
                         }
-                }
 
-                if (curr == null) {
-                        // t not found.
-                        return;
-                }
-
-                // Merges curr's children.
-                if (curr.left != null && curr.right != null) {
-                        Node ptr = curr;
-                        while (ptr.right != null) {
-                                ptr = ptr.right;
+                        if (curr == null) {
+                                // t not found.
+                                return;
                         }
-                        ptr.right = curr.right;
-                        curr.right = null;
-                }
 
-                if (curr.left == null) {
-                        curr.left = curr.right;
-                        curr.right = null;
-                }
-
-                // curr.left contains the merged tree for the two children
-                // curr.right is always null
-                if (last == null) {  // curr is the root
-                        root = curr.left;
-                } else {  // curr is an internal node
-                        // Replaces curr in last with new merged tree.
-                        if (last.left == curr) {
-                                last.left = curr.left;
-                        } else {
-                                assert last.right == curr;
-                                last.right = curr.left;
+                        // Merges curr's children.
+                        if (curr.left != null && curr.right != null) {
+                                Node ptr = curr;
+                                while (ptr.right != null) {
+                                        ptr = ptr.right;
+                                }
+                                ptr.right = curr.right;
+                                curr.right = null;
                         }
+
+                        if (curr.left == null) {
+                                curr.left = curr.right;
+                                curr.right = null;
+                        }
+
+                        // curr.left contains the merged tree of children
+                        // curr.right is always null
+                        if (last == null) {  // curr is the root
+                                root = curr.left;
+                        } else {  // curr is an internal node
+                                // Replaces curr in last with new merged tree.
+                                if (last.left == curr) {
+                                        last.left = curr.left;
+                                } else {
+                                        assert last.right == curr;
+                                        last.right = curr.left;
+                                }
+                        }
+                } finally {
+                        lock.unlock();
                 }
         }
 
