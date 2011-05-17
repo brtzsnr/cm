@@ -10,9 +10,8 @@ import data_structures.implementation.LockFreeList;
 import data_structures.implementation.LockFreeTree;
 
 public class Main {
-
-	private static final int NR_OPERATIONS = 20;
-	private static final boolean ALLOW_DOUBLE_ELEMENTS = true;
+	private static final int NR_OPERATIONS = 1000000;
+	private static final boolean ALLOW_DOUBLE_ELEMENTS = false;
 
 	private static final String CL = "cl";
 	private static final String CT = "ct";
@@ -22,7 +21,7 @@ public class Main {
 	private static final String LFT = "lft";
 
 	private static void permute(int[] array) {
-		Random random = new Random(12);
+		Random random = new Random();
 
 		for (int i = 0; i < array.length; i++) {
 			int r = random.nextInt(array.length);
@@ -45,7 +44,7 @@ public class Main {
 
 	private static void createWorkDataWithDoubles(int[] itemsToAdd,
 			int[] itemsToRemove) {
-		Random random = new Random(0);
+		Random random = new Random();
 
 		for (int i = 0; i < NR_OPERATIONS; i++) {
 			int nextRandom = random.nextInt(NR_OPERATIONS);
@@ -66,7 +65,8 @@ public class Main {
 	
 	}
 
-	private static void startThreads(Sorted<Integer> sorted, int nrThreads)
+	private static void startThreads(
+      boolean op, Sorted<Integer> sorted, int nrThreads)
 			throws InterruptedException {
 		int[] itemsToAdd = new int[NR_OPERATIONS];
 		int[] itemsToRemove = new int[NR_OPERATIONS];
@@ -75,25 +75,20 @@ public class Main {
 		WorkerThread[] workerThreads = new WorkerThread[nrThreads];
 
 		for (int i = 0; i < nrThreads; i++) {
-			workerThreads[i] = new WorkerThread(i, sorted, NR_OPERATIONS
-					/ nrThreads, itemsToAdd, itemsToRemove);
+			workerThreads[i] = new WorkerThread(
+          i, op, sorted, NR_OPERATIONS / nrThreads, itemsToAdd, itemsToRemove);
 		}
 
 		long start = System.currentTimeMillis();
 		for (int i = 0; i < nrThreads; i++) {
 			workerThreads[i].start();
 		}
-
 		for (int i = 0; i < nrThreads; i++) {
 			workerThreads[i].join();
 		}
 		long end = System.currentTimeMillis();
-		System.out.printf("time: %d ms\n\n", end - start);
 
-		System.out.println(sorted);
-		System.out.println();
-
-		System.out.printf("time: %d ms\n\n", end - start);
+    System.out.printf("time: %d ms\n\n", end - start);
 	}
 
 	private static void performWork(String dataStructure, int nrThreads)
@@ -115,7 +110,11 @@ public class Main {
 			exitWithError();
 		}
 
-		startThreads(sorted, nrThreads);
+    System.out.println(">>> ADD");
+		startThreads(true, sorted, nrThreads);
+    System.out.println(">>> REMOVE");
+		startThreads(false, sorted, nrThreads);
+    System.out.println(sorted);
 	}
 
 	private static void exitWithError() {

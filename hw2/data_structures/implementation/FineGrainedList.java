@@ -5,84 +5,82 @@ import java.util.concurrent.locks.ReentrantLock;
 import data_structures.Sorted;
 
 public class FineGrainedList<T extends Comparable<T>> implements Sorted<T> {
-        private class Node {
-                public Node next = null;
-                public T data = null;
-                private Lock lock = new ReentrantLock();
+  private class Node {
+    public Lock lock = new ReentrantLock();
+    public Node next = null;
+    public T data = null;
 
-                public Node(Node next, T data) {
-                        this.next = next;
-                        this.data = data;
-                }
+    public Node(Node next, T data) {
+      this.next = next;
+      this.data = data;
+    }
+  }
 
-                public void lock() {
-                        lock.lock();
-                }
+  // head marks the start of the list, but it is not in the list.
+  private Node head = new Node(null, null);
 
-                public void unlock() {
-                        lock.unlock();
-                }
-        }
+  public void add(T t) {
+    Node curr = head;
+    curr.lock.lock();
 
-        // head marks the start of the list, but it is not in the list.
-        private Node head = new Node(null, null);
+    Node next;
+    while ((next = curr.next) != null) {
+      // Invariant: curr is locked
+      // Invariant: curr.data < t
+      next.lock.lock();
 
-        public void add(T t) {
-                Node curr = head;
-                curr.lock();
+      if (t.compareTo(next.data) <= 0) {
+        break;
+      }
 
-                while (curr.next != null) {
-                        curr.next.lock();
+      curr.lock.unlock();
+      curr = next;
+    }
 
-                        if (t.compareTo(curr.next.data) <= 0) {
-                                break;
-                        }
+    // curr is acquired
+    curr.next = new Node(curr.next, t);
+    if (curr.next.next != null) {  // old curr's next is acquired
+      curr.next.next.lock.unlock();
+    }
+    curr.lock.unlock();
+  }
 
-                        Node tmp = curr.next;
-                        curr.unlock();
-                        curr = tmp;
-                }
+  public void remove(T t) {
+    Node curr = head;
+    curr.lock.lock();
 
-                // curr is acquired
-                curr.next = new Node(curr.next, t);
-                if (curr.next.next != null) {  // old curr's next is acquired
-                        curr.next.next.unlock();
-                }
-                curr.unlock();
-        }
+    while (curr.next != null) {
+      curr.next.lock.lock();
 
-        public void remove(T t) {
-                Node curr = head;
-                curr.lock();
+      int r = t.compareTo(curr.next.data);
+      if (r == 0) {
+        Node tmp = curr.next.next;
+        curr.next.lock.unlock();
+        curr.next = tmp;
+        break;
+      } else if (r < 0) {
+        curr.next.lock.unlock();
+        break;
+      }
 
-                while (curr.next != null) {
-                        curr.next.lock();
+      Node tmp = curr.next;
+      curr.lock.unlock();
+      curr = tmp;
+    }
 
-                        if (t.compareTo(curr.next.data) == 0) {
-                                Node tmp = curr.next.next;
-                                curr.next.unlock();
-                                curr.next = tmp;
-                                break;
-                        }
+    curr.lock.unlock();
+  }
 
-                        Node tmp = curr.next;
-                        curr.unlock();
-                        curr = tmp;
-                }
-
-                curr.unlock();
-        }
-
-        public String toString() {
-                StringBuffer buffer = new StringBuffer();
-                buffer.append("{ ");
-                Node curr = head.next;
-                while (curr != null) {
-                        buffer.append(curr.data);
-                        buffer.append(", ");
-                        curr = curr.next;
-                }
-                buffer.append("}");
-                return buffer.toString();
-        }
+  public String toString() {
+    StringBuffer buffer = new StringBuffer();
+    buffer.append("{ ");
+    Node curr = head.next;
+    while (curr != null) {
+      buffer.append(curr.data);
+      buffer.append(", ");
+      curr = curr.next;
+    }
+    buffer.append("}");
+    return buffer.toString();
+  }
 }

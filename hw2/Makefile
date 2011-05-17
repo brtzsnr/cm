@@ -17,3 +17,8 @@ fl:	compile
 ft:	compile
 	java -ea data_structures/Main ft 4
 
+lfl:	compile
+	java -ea data_structures/Main lfl 4
+
+lft:	compile
+	java -ea data_structures/Main lft 4

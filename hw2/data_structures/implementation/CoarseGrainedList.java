@@ -5,56 +5,64 @@ import java.util.concurrent.locks.ReentrantLock;
 import data_structures.Sorted;
 
 public class CoarseGrainedList<T extends Comparable<T>> implements Sorted<T> {
-        private class Node {
-                public Node next = null;
-                public T data = null;
+  private class Node {
+    public Node next = null;
+    public T data = null;
 
-                public Node(Node next, T data) {
-                        this.next = next;
-                        this.data = data;
-                }
-        }
+    public Node(Node next, T data) {
+      this.next = next;
+      this.data = data;
+    }
+  }
 
-        // head marks the start of the list, but it is not in the list.
-        private Node head = new Node(null, null);
-        private Lock lock = new ReentrantLock();
+  // head marks the start of the list, but it is not in the list.
+  private Node head = new Node(null, null);
+  private Lock lock = new ReentrantLock();
 
-        public void add(T t) {
-                lock.lock();
-                Node curr = head;
-                while (curr.next != null) {
-                        if (t.compareTo(curr.next.data) <= 0) {
-                                break;
-                        }
-                        curr = curr.next;
-                }
-                curr.next = new Node(curr.next, t);
-                lock.unlock();
-        }
+  public void add(T t) {
+    Node curr = head;
+    lock.lock();
 
-        public void remove(T t) {
-                lock.lock();
-                Node curr = head;
-                while (curr.next != null) {
-                        if (t.compareTo(curr.next.data) == 0) {
-                                curr.next = curr.next.next;
-                                break;
-                        }
-                        curr = curr.next;
-                }
-                lock.unlock();
-        }
+    Node next;
+    while ((next = curr.next) != null) {
+      if (t.compareTo(next.data) <= 0) {
+        break;
+      }
+      curr = next;
+    }
 
-        public String toString() {
-                StringBuffer buffer = new StringBuffer();
-                buffer.append("{ ");
-                Node curr = head.next;
-                while (curr != null) {
-                        buffer.append(curr.data);
-                        buffer.append(", ");
-                        curr = curr.next;
-                }
-                buffer.append("}");
-                return buffer.toString();
-        }
+    curr.next = new Node(curr.next, t);
+    lock.unlock();
+  }
+
+  public void remove(T t) {
+    lock.lock();
+    Node curr = head;
+    while (curr.next != null) {
+      int r = t.compareTo(curr.next.data);
+      if (r == 0) {
+        curr.next = curr.next.next;
+        break;
+      } else if (r < 0) {
+        System.err.println(t + " not found");
+        break;
+      }
+
+      curr = curr.next;
+    }
+    lock.unlock();
+  }
+
+  public String toString() {
+    StringBuffer buffer = new StringBuffer();
+    buffer.append("{ ");
+    Node curr = head.next;
+    while (curr != null) {
+      buffer.append(curr.data);
+      buffer.append(", ");
+      curr = curr.next;
+    }
+    buffer.append("}");
+    return buffer.toString();
+  }
 }
