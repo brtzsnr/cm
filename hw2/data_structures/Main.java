@@ -10,7 +10,7 @@ import data_structures.implementation.LockFreeList;
 import data_structures.implementation.LockFreeTree;
 
 public class Main {
-	private static final int NR_OPERATIONS = 1000000;
+	private static final int NR_OPERATIONS = 40000;
 	private static final boolean ALLOW_DOUBLE_ELEMENTS = false;
 
 	private static final String CL = "cl";

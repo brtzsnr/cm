@@ -160,17 +160,24 @@ public class LockFreeTree<T extends Comparable<T>> implements Sorted<T> {
     }
   }
 
-  public void helpInsert(IInfo op) {
+  private void helpInsert(IInfo op) {
     casChild(op.p, op.l, op.newInternal);
     op.p.update.cas(op, IFLAG, op, CLEAN);
   }
 
-  public boolean helpDelete(DInfo op) {
+  private boolean helpDelete(DInfo op) {
     op.p.update.cas(
         op.pupdate.getInfo(), op.pupdate.getState(), op, MARK);
 
     // This isn't what the paper says, but there is no way to do
     // read-compare-and-swap with AtomicStampedReference.
+    //
+    // From the referenced paper:
+    // We show that no value is ever stored in the same CAS object
+    // by two different successful CAS steps. This implies that, if
+    // a process reads a CAS object twice and sees the same value
+    // both times, the CAS object did not change between the two
+    // reads.
     if (op.p.update.getState() == MARK) {
       helpMarked((DInfo) op);
       return true;
@@ -181,7 +188,7 @@ public class LockFreeTree<T extends Comparable<T>> implements Sorted<T> {
     }
   }
 
-  public void helpMarked(DInfo op) {
+  private void helpMarked(DInfo op) {
     Node other;
 
     if (op.p.right.get() == op.l) {
@@ -194,7 +201,7 @@ public class LockFreeTree<T extends Comparable<T>> implements Sorted<T> {
     op.gp.update.cas(op, DFLAG, op, CLEAN);
   }
 
-  public void casChild(Internal parent, Node old, Node newNode) {
+  private void casChild(Internal parent, Node old, Node newNode) {
     if (compare(newNode, parent) < 0) {
       parent.left.compareAndSet(old, newNode);
     } else {
