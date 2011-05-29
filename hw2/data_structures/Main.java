@@ -10,7 +10,7 @@ import data_structures.implementation.LockFreeList;
 import data_structures.implementation.LockFreeTree;
 
 public class Main {
-	private static final int NR_OPERATIONS = 40000;
+	private static final int NR_OPERATIONS = 4000000;
 	private static final boolean ALLOW_DOUBLE_ELEMENTS = false;
 
 	private static final String CL = "cl";
@@ -72,6 +72,7 @@ public class Main {
 		int[] itemsToRemove = new int[NR_OPERATIONS];
 		createWorkData(itemsToAdd, itemsToRemove);
 
+    WorkerThread.wallTime = 0;
 		WorkerThread[] workerThreads = new WorkerThread[nrThreads];
 
 		for (int i = 0; i < nrThreads; i++) {
@@ -88,7 +89,8 @@ public class Main {
 		}
 		long end = System.currentTimeMillis();
 
-    System.out.printf("time: %d ms\n\n", end - start);
+    System.out.printf("%d\n", end - start);
+    System.out.printf("%d\n", WorkerThread.wallTime);
 	}
 
 	private static void performWork(String dataStructure, int nrThreads)

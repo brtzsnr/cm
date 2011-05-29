@@ -7,6 +7,8 @@ public class WorkerThread extends Thread {
 	private static final boolean DO_SLEEP = false;
 	private static int SLEEP_TIME = 10; // ms
 
+  public static long wallTime = 0;
+
 	private int id;
   private boolean op;
 	private int nrIterations;
@@ -40,7 +42,10 @@ public class WorkerThread extends Thread {
     }
     long end = getCPUTimeMillis();
 
-    System.err.println("Worked " + id + " spent " + (end - start) + " ms");
+    // System.err.println("Worked " + id + " spent " + (end - start) + " ms");
+    synchronized (WorkerThread.class) {
+      wallTime += end - start;
+    }
 	}
 
 	private void remove(Sorted<Integer> sorted, int startIndex, int nrIterations, int[] itemsToRemove) {
